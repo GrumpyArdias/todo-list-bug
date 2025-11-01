@@ -11,7 +11,7 @@ export class AuthService {
         private jwtService: JwtService,
     ) {}
 
-    async signIn(email: string, pass: string): Promise<any> {
+    async signIn(email: string, password: string): Promise<any> {
         const user = await this.usersService.findOne(email);
 
         if (!user) {
@@ -19,7 +19,7 @@ export class AuthService {
             throw new UnauthorizedException();
         }
 
-        if (user?.pass !== pass) {
+        if (user?.pass !== password) {
             this.logger.log(`Invalid password for user with email ${email}`);
             throw new UnauthorizedException();
         }
