@@ -84,14 +84,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
                 errors: Object.values(err.constraints || {}),
             }));
 
-            logger.warn('Validation failed', {
+            logger.warn({
+                message: 'Validation failed',
                 stack: 'ValidationError',
                 url: request.url,
                 method: request.method,
                 body: sanitizeBody(request.body),
                 validationDetails: details,
             });
-
             response.status(HttpStatus.BAD_REQUEST).json({
                 statusCode: HttpStatus.BAD_REQUEST,
                 message: 'Validation failed',

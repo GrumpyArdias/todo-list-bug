@@ -1,8 +1,8 @@
-import { utilities, WinstonModule } from 'nest-winston';
+import { WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
 import 'winston-daily-rotate-file';
-
 export const logger = WinstonModule.createLogger({
+    level: 'info',
     format: winston.format.combine(
         winston.format.timestamp(),
         winston.format.errors({ stack: true }),
@@ -11,15 +11,27 @@ export const logger = WinstonModule.createLogger({
     transports: [
         // Console
         new winston.transports.Console({
+            level: 'info',
             format: winston.format.combine(
                 winston.format.colorize(),
-                utilities.format.nestLike('APP:LOGGER', {
-                    colors: true,
-                    prettyPrint: true,
-                }),
+                winston.format.timestamp({ format: 'HH:mm:ss' }),
+                winston.format.printf(
+                    ({ timestamp, level, message, context, ...meta }) => {
+                        let formattedMessage = message;
+                        if (typeof message === 'object') {
+                            formattedMessage = JSON.stringify(message, null, 2);
+                        }
+
+                        const metaStr =
+                            Object.keys(meta).length > 0
+                                ? `\n${JSON.stringify(meta, null, 2)}`
+                                : '';
+
+                        return `${timestamp} [${context || 'APP'}] ${level}: ${formattedMessage}${metaStr}`;
+                    },
+                ),
             ),
         }),
-
         // This is just for errors
         new winston.transports.DailyRotateFile({
             dirname: 'logs',
@@ -30,6 +42,7 @@ export const logger = WinstonModule.createLogger({
             maxFiles: '14d',
             level: 'error',
         }),
+
         //This is for warnings
         new winston.transports.DailyRotateFile({
             dirname: 'logs',
@@ -37,10 +50,9 @@ export const logger = WinstonModule.createLogger({
             datePattern: 'YYYY-MM-DD',
             zippedArchive: true,
             maxSize: '20m',
-            maxFiles: '21d', // 3 semanas
+            maxFiles: '21d',
             level: 'warn',
         }),
-
         // All events that happend in the API just for DEV
         new winston.transports.DailyRotateFile({
             dirname: 'logs',
