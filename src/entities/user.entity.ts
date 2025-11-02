@@ -13,6 +13,9 @@ export class User {
     email: string;
 
     // Por motivos de simplicidad, vamos a guardar la contraseña en texto plano
+    // No he cambiado la configuracion de esto para que las contraseñas
+    // se guarden encriptadas por este comentario, si que creo que es importante
+    // por seguridad.
     @Column()
     pass: string;
 

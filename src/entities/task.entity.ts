@@ -11,7 +11,8 @@ export class Task {
 
     @Column()
     description: string;
-
+    // Creo que seria importante que esto se iniicializara en false, por una cuestion de limpieza, pero no estoy seguro de que esta sea la mejor opcion
+    // o si existe algun motivo por el que no se ha realizado, este tipo de cosas relacionadas con la  base de datos prefiero preguntarlas y sopesarlas
     @Column()
     done: boolean;
 

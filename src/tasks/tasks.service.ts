@@ -1,7 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+    ForbiddenException,
+    Injectable,
+    NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Task } from '../entities/task.entity';
 import { Repository } from 'typeorm';
+import { CreateTaskDto } from './dtos/create-task.dto';
+import { TaskPublicDto } from './dtos/task-public.dto';
+import { plainToInstance } from 'class-transformer';
+import { UpdateTaskDto } from './dtos/update-task.dto';
+import { User } from '../entities/user.entity';
 
 @Injectable()
 export class TasksService {
@@ -10,37 +19,87 @@ export class TasksService {
         private readonly tasksRepository: Repository<Task>,
     ) {}
 
-    async listTasks(user: any) {
-        const tasks = await this.tasksRepository.find({
-            where: {
-                owner: {
-                    id: user.id,
-                },
-            },
-            relations: ['owner'],
+    async createTask(
+        user: User,
+        CreateTaskDto: CreateTaskDto,
+    ): Promise<{ id: string }> {
+        const newTask = this.tasksRepository.create({
+            title: CreateTaskDto.title,
+            description: CreateTaskDto.description,
+            done: CreateTaskDto.done ?? false,
+            dueDate: CreateTaskDto.dueDate,
+            owner: user,
         });
 
-        return tasks;
+        const saved = await this.tasksRepository.save(newTask);
+
+        if (!saved) throw new NotFoundException('Task could not be created');
+
+        return { id: saved.id };
     }
 
-    async getTask(id: string, user: any) {
+    async listTasks(user: User): Promise<TaskPublicDto[] | []> {
+        const tasks = await this.tasksRepository.find({
+            where: { owner: { id: user.id } },
+            select: ['id', 'title', 'description', 'done', 'dueDate'],
+        });
+
+        if (tasks.length === 0) {
+            return [];
+        }
+
+        return plainToInstance(TaskPublicDto, tasks);
+    }
+
+    async getTask(id: string, user: User): Promise<TaskPublicDto> {
         const task = await this.tasksRepository
             .createQueryBuilder('task')
+            .select([
+                'task.id',
+                'task.title',
+                'task.description',
+                'task.done',
+                'task.dueDate',
+            ])
             .andWhere('task.owner.id = :ownerId', { ownerId: user.id })
             .andWhere('task.id = :id', { id })
             .getOne();
-        return task;
+        if (!task) {
+            throw new ForbiddenException('Task not found or access denied');
+        }
+        return plainToInstance(TaskPublicDto, task);
     }
-    async editTask(user: any, body: any) {
-        const id = body.id;
-        const task = await this.getTask(id, user);
+    async editTask(
+        id: string,
+        user: User,
+        updateTaskDto: UpdateTaskDto,
+    ): Promise<TaskPublicDto> {
+        const task = await this.tasksRepository.findOne({
+            where: { id, owner: { id: user.id } },
+        });
 
         if (!task) {
-            throw new NotFoundException('Tarea no encontrada o no autorizada');
+            throw new ForbiddenException('Task not found or not authorized');
         }
 
-        await this.tasksRepository.update(id, body);
+        if (updateTaskDto.title !== undefined) task.title = updateTaskDto.title;
+        if (updateTaskDto.description !== undefined)
+            task.description = updateTaskDto.description;
+        if (updateTaskDto.done !== undefined) task.done = updateTaskDto.done;
+        if (updateTaskDto.dueDate !== undefined)
+            task.dueDate = updateTaskDto.dueDate;
 
-        return this.getTask(id, user);
+        await this.tasksRepository.save(task);
+
+        return plainToInstance(TaskPublicDto, task);
+    }
+
+    async deleteTask(id: string, user: User): Promise<void> {
+        const result = await this.tasksRepository.delete({
+            id,
+            owner: { id: user.id },
+        });
+        if (result.affected === 0)
+            throw new ForbiddenException('Task not found or not authorized');
     }
 }
