@@ -52,18 +52,10 @@ export class TasksService {
     }
 
     async getTask(id: string, user: User): Promise<TaskPublicDto> {
-        const task = await this.tasksRepository
-            .createQueryBuilder('task')
-            .select([
-                'task.id',
-                'task.title',
-                'task.description',
-                'task.done',
-                'task.dueDate',
-            ])
-            .andWhere('task.owner.id = :ownerId', { ownerId: user.id })
-            .andWhere('task.id = :id', { id })
-            .getOne();
+        const task = await this.tasksRepository.findOne({
+            where: { id, owner: { id: user.id } },
+            select: ['id', 'title', 'description', 'done', 'dueDate'],
+        });
         if (!task) {
             throw new ForbiddenException('Task not found or access denied');
         }
